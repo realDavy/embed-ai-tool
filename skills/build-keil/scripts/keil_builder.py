@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import os
 import platform
 import re
@@ -23,7 +24,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-_REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if sys.stdout.encoding and sys.stdout.encoding.lower().replace("-", "") != "utf8":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "shared"))
 from tool_config import get_tool_path, set_tool_path
 
