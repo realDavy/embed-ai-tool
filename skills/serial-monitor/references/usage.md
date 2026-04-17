@@ -141,6 +141,132 @@ python3 skills/serial-monitor/scripts/serial_monitor.py \
 - `0`：串口会话成功，或虽未识别明确健康信号但没有发现硬错误
 - `1`：参数非法、依赖缺失、串口无法打开、检测到错误相关日志，或用户中断
 
+## AI 使用场景
+
+### 场景 1：验证系统启动
+
+```bash
+# 烧录后等待启动信息
+python3 skills/serial-monitor/scripts/serial_monitor.py \
+  --auto --wait "System Start"
+# 输出: ✅ 检测到关键字符串: System Start
+```
+
+### 场景 2：检测运行错误
+
+```bash
+# 读取 10 秒，检查是否有错误
+python3 skills/serial-monitor/scripts/serial_monitor.py \
+  --auto --duration 10 -v
+# 如果有错误会显示:
+# ❌ 检测到 1 条错误相关日志
+# ❌ 错误样例:
+#   [ERROR] I2C timeout
+```
+
+### 场景 3：一键复位并捕获完整启动日志
+
+```bash
+# 自动复位（最简单，需要 OpenOCD + 调试器）
+python3 skills/serial-monitor/scripts/serial_monitor.py \
+  --auto --wait-reset --auto-reset \
+  --interface stlink --openocd-target target/stm32f4x.cfg \
+  --duration 5 -v
+```
+
+### 场景 4：保存测试日志供后续分析
+
+```bash
+python3 skills/serial-monitor/scripts/serial_monitor.py \
+  --auto --duration 60 --save test_log.txt --timestamp
+```
+
+## 推荐工作流
+
+### 标准工作流（芯片已在运行）
+
+```bash
+# 1. 等待启动完成
+python3 skills/serial-monitor/scripts/serial_monitor.py --auto --wait "System Start"
+
+# 2. 检查运行状态
+python3 skills/serial-monitor/scripts/serial_monitor.py --auto --duration 3 -v
+
+# 3. 持续监控
+python3 skills/serial-monitor/scripts/serial_monitor.py --auto --monitor --timestamp
+```
+
+### 捕获完整启动日志
+
+```bash
+# 方法 1：自动复位（推荐）
+python3 skills/serial-monitor/scripts/serial_monitor.py \
+  --auto --wait-reset --auto-reset \
+  --interface stlink --openocd-target target/stm32f4x.cfg \
+  --duration 5 --save startup.log
+
+# 方法 2：手动复位
+python3 skills/serial-monitor/scripts/serial_monitor.py \
+  --auto --wait-reset --duration 5 --save startup.log
+# 看到提示后，在另一个终端烧录或按复位键
+
+# 方法 3：读取缓冲区历史数据
+python3 skills/serial-monitor/scripts/serial_monitor.py --auto --keep
+```
+
+### 场景选择参考
+
+| 场景 | 推荐参数 |
+|------|---------|
+| 一键复位+监控 | `--auto --wait-reset --auto-reset --interface ... --openocd-target ...` |
+| 烧录后查看日志 | `--auto --wait-reset` |
+| 芯片已在运行 | `--auto --keep` |
+| 长时间监控 | `--auto --monitor --timestamp` |
+| 保存启动日志 | `--auto --wait-reset --auto-reset --save log.txt` |
+| 验证特定功能 | `--auto --wait "OK"` |
+
+## 故障排查
+
+### 提示 PermissionError
+
+串口被其他程序占用。关闭串口助手、IDE 或其他监视工具。
+
+### 自动检测选择了错误的串口
+
+使用 `--list` 查看所有串口，然后用 `--port` 手动指定。
+
+### 看不到输出
+
+1. 检查波特率是否匹配（默认 115200）
+2. 检查 TX/RX 是否接反
+3. 使用 `--clear` 清空缓冲区
+4. 尝试复位开发板
+
+### --wait-reset 模式超时
+
+- 确保在 30 秒内复位芯片或烧录固件
+- 检查串口连接是否正确
+- 检查芯片是否正常工作
+
+### --auto-reset 失败
+
+1. 确认 OpenOCD 已安装：`openocd --version`
+2. 确认调试器已连接且驱动正常
+3. 确认 SWD 接线正确（SWDIO→PA13, SWCLK→PA14, GND→GND）
+4. 尝试用 `--interface` 手动指定调试器类型
+
+## 依赖安装
+
+```bash
+# 基础依赖（必需）
+pip install pyserial
+
+# OpenOCD（仅 --auto-reset 功能需要）
+# Linux: sudo apt install openocd
+# macOS: brew install openocd
+# Windows: https://github.com/openocd-org/openocd/releases
+```
+
 ## 与 Skill 的配合方式
 
 在 `serial-monitor` skill 中，推荐工作流是：
