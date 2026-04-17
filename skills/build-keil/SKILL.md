@@ -28,11 +28,14 @@ description: 当需要通过 Keil MDK 命令行编译嵌入式工程，调用自
 ## 执行步骤
 
 1. 先阅读 [references/usage.md](references/usage.md)，确认本次是环境探测、工程扫描、列出目标，还是执行编译。
-2. 若不确定环境是否就绪，先运行自带脚本 [scripts/keil_builder.py](scripts/keil_builder.py) 的 `--detect` 模式确认。
-3. 若不确定工程文件位置，使用 `--scan` 搜索工作区。
-4. 使用 `--list-targets` 确认可用目标，再用 `--project` + `--target` 执行编译。
-5. 读取脚本输出的构建结果和产物扫描报告，重点关注首选产物（AXF/ELF > HEX > BIN）、错误/警告统计和失败分类。
-6. 将构建目标、产物路径、芯片型号和工具链信息写回 `Project Profile`，并在需要时交给下游 skill。
+2. 对于单工程、单目标的常见场景，优先使用一次调用完成探测+编译：
+   ```bash
+   python scripts/keil_builder.py --detect --project <工程文件> --target <目标名>
+   ```
+   这样只启动一次 Python 进程，避免 `--detect` → `--list-targets` → `--build` 三次串行调用的开销。
+3. 仅在需要交互式选择（多个工程文件或多个目标需要用户确认）时，才分步执行 `--scan`、`--list-targets`。
+4. 读取脚本输出的构建结果和产物扫描报告，重点关注首选产物（AXF/ELF > HEX > BIN）、错误/警告统计和失败分类。
+5. 将构建目标、产物路径、芯片型号和工具链信息写回 `Project Profile`，并在需要时交给下游 skill。
 
 ## 失败分流
 

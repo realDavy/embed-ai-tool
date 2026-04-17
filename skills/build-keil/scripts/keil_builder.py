@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """通用 Keil MDK 命令行构建工具。
 
 这个脚本为 `build-keil` skill 提供可重复调用的执行入口，支持：
@@ -40,7 +40,6 @@ PROJECT_EXTENSIONS = {".uvprojx", ".uvproj"}
 KEIL_SEARCH_PATHS = [
     r"C:\Keil_v5\UV4\UV4.exe",
     r"C:\Keil\UV4\UV4.exe",
-    r"C:\Keil_v5\UV4\UV4.exe",
     r"D:\Keil_v5\UV4\UV4.exe",
     r"D:\Keil\UV4\UV4.exe",
 ]
@@ -323,14 +322,22 @@ def parse_build_log(log_path: Path) -> tuple[int, int, list[str]]:
     return errors, warnings, evidence
 
 
+@dataclass
+class KeilBuildOutput:
+    ok: bool
+    cmd_str: str
+    errors: int
+    warnings: int
+    evidence: list[str]
+
+
 def run_keil_build(
     uv4_path: str,
     project_path: Path,
     target_name: str,
     rebuild: bool,
     log_path: Path,
-) -> tuple[bool, str, list[str]]:
-    # UV4 命令行: UV4.exe -b/-r project.uvprojx -t target -o log
+) -> KeilBuildOutput:
     flag = "-r" if rebuild else "-b"
     cmd = [uv4_path, flag, str(project_path), "-t", target_name, "-o", str(log_path)]
     cmd_str = " ".join(cmd)
@@ -339,21 +346,20 @@ def run_keil_build(
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     except subprocess.TimeoutExpired:
-        return False, cmd_str, ["❌ Keil 编译超时（600 秒）"]
+        return KeilBuildOutput(False, cmd_str, 0, 0, ["❌ Keil 编译超时（600 秒）"])
     except FileNotFoundError:
-        return False, cmd_str, [f"❌ 未找到 UV4: {uv4_path}"]
+        return KeilBuildOutput(False, cmd_str, 0, 0, [f"❌ 未找到 UV4: {uv4_path}"])
 
-    # UV4 返回码: 0=成功, 1=警告, 2=错误, 3=致命错误
     errors, warnings, log_evidence = parse_build_log(log_path)
 
     if result.returncode <= 1 and errors == 0:
         action = "重新编译" if rebuild else "编译"
         warn_note = f"（{warnings} 个警告）" if warnings > 0 else ""
         print(f"✅ {action}成功{warn_note}")
-        return True, cmd_str, log_evidence
+        return KeilBuildOutput(True, cmd_str, errors, warnings, log_evidence)
 
     log_evidence.insert(0, f"UV4 返回码: {result.returncode}")
-    return False, cmd_str, log_evidence
+    return KeilBuildOutput(False, cmd_str, errors, warnings, log_evidence)
 
 
 # ---------------------------------------------------------------------------
@@ -433,7 +439,8 @@ def build_parser() -> argparse.ArgumentParser:
   %(prog)s --scan-artifacts Objects/
         """,
     )
-    parser.add_argument("--detect", action="store_true", help="探测 Keil MDK 环境")
+    parser.add_argument("--detect", action="store_true",
+                        help="探测 Keil MDK 环境（可与 --project/--target 组合，一次完成探测+编译）")
     parser.add_argument("--project", help=".uvprojx 或 .uvproj 工程文件路径")
     parser.add_argument("--target", help="构建目标名称")
     parser.add_argument("--list-targets", action="store_true", help="列出工程中的所有目标")
@@ -451,14 +458,17 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    # 环境探测
+    # 环境探测（可独立使用，也可与 --project 组合）
     if args.detect:
         env = detect_environment(args.uv4)
         print_detect_report(env)
         if args.save_config and env["uv4"]["available"]:
             cfg_path = set_tool_path("uv4", env["uv4"]["path"])
             print(f"  💾 已保存到 {cfg_path}")
-        return 0 if env["uv4"]["available"] else 1
+        if not env["uv4"]["available"]:
+            return 1
+        if not args.project:
+            return 0
 
     # 扫描工程文件
     if args.scan:
@@ -548,7 +558,7 @@ def main() -> int:
     log_path = Path(args.log) if args.log else project_path.parent / f"{selected.name}_build.log"
 
     # 执行编译
-    ok, cmd_str, evidence = run_keil_build(
+    build_out = run_keil_build(
         uv4_path=uv4_path,
         project_path=project_path,
         target_name=selected.name,
@@ -556,30 +566,28 @@ def main() -> int:
         log_path=log_path,
     )
 
-    # 解析日志统计
-    errors, warnings, _ = parse_build_log(log_path)
-
-    # 扫描产物
+    # 扫描产物（避免重叠：output_dir 是 project_path.parent 子目录时不重复扫描）
     output_dir = resolve_output_dir(project_path, selected)
     artifacts = scan_artifacts(output_dir)
-    # 也搜索工程目录本身
     if not artifacts:
-        artifacts = scan_artifacts(project_path.parent)
+        project_dir = project_path.parent.resolve()
+        if output_dir != project_dir and not str(output_dir).startswith(str(project_dir) + os.sep):
+            artifacts = scan_artifacts(project_dir)
     primary = artifacts[0] if artifacts else None
 
-    if not ok:
+    if not build_out.ok:
         result = BuildResult(
             status="failure",
             summary="Keil 编译失败",
-            build_cmd=cmd_str,
+            build_cmd=build_out.cmd_str,
             project_file=str(project_path),
             target_name=selected.name,
             device=selected.device,
             toolchain=selected.toolchain,
-            errors=errors,
-            warnings=warnings,
+            errors=build_out.errors,
+            warnings=build_out.warnings,
             failure_category="project-config-error",
-            evidence=evidence,
+            evidence=build_out.evidence,
         )
         print_build_report(result)
         return 1
@@ -588,16 +596,16 @@ def main() -> int:
         result = BuildResult(
             status="success",
             summary="编译成功但未找到固件产物",
-            build_cmd=cmd_str,
+            build_cmd=build_out.cmd_str,
             project_file=str(project_path),
             target_name=selected.name,
             device=selected.device,
             toolchain=selected.toolchain,
-            errors=errors,
-            warnings=warnings,
+            errors=build_out.errors,
+            warnings=build_out.warnings,
             artifacts=[],
             failure_category="artifact-missing",
-            evidence=evidence,
+            evidence=build_out.evidence,
         )
         print_build_report(result)
         return 1
@@ -605,16 +613,16 @@ def main() -> int:
     result = BuildResult(
         status="success",
         summary=f"编译成功，找到 {len(artifacts)} 个产物",
-        build_cmd=cmd_str,
+        build_cmd=build_out.cmd_str,
         project_file=str(project_path),
         target_name=selected.name,
         device=selected.device,
         toolchain=selected.toolchain,
-        errors=errors,
-        warnings=warnings,
+        errors=build_out.errors,
+        warnings=build_out.warnings,
         artifacts=artifacts,
         primary_artifact=primary,
-        evidence=evidence,
+        evidence=build_out.evidence,
     )
     print_build_report(result)
     return 0
