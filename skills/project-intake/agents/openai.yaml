@@ -1,4 +1,0 @@
-interface:
-  display_name: "工程识别"
-  short_description: "扫描嵌入式工作区，识别构建系统、工具链、目标芯片与探针，生成工程画像。"
-  default_prompt: "使用 project-intake skill，扫描当前工作区，识别工程形态，生成标准化 Project Profile，并推荐下一步 skill。"

@@ -14,8 +14,8 @@
 
 这个仓库应持续覆盖以下串联流程：
 
-1. `project-intake -> build-cmake -> flash-openocd -> serial-monitor`
-2. `project-intake -> build-cmake -> debug-gdb-openocd`
+1. `build-cmake -> flash-openocd -> serial-monitor`
+2. `build-cmake -> debug-gdb-openocd`
 
 ## 需要保留的失败用例
 

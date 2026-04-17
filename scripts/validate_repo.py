@@ -22,7 +22,6 @@ REQUIRED_FILES = [
 ]
 
 REQUIRED_SKILLS = [
-    "project-intake",
     "build-cmake",
     "flash-openocd",
     "serial-monitor",

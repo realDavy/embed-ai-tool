@@ -192,14 +192,12 @@ void main_loop(void) {
 volatile uint32_t counter = 0;
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
-    __disable_irq();
-    counter++;
-    __enable_irq();
+    counter++;  // ISR 中无需 disable_irq，回调本身在中断上下文中执行
 }
 
 void main_loop(void) {
     __disable_irq();
-    uint32_t local = counter;
+    uint32_t local = counter;  // 主循环侧需要保护，防止读取时被 ISR 打断
     __enable_irq();
 }
 ```
@@ -282,8 +280,8 @@ printf("Debug: var = %d\n", var);  // ⚠️ 不要在中断中使用
 ## 常见陷阱
 
 ### 1. I2C 地址混淆
-❌ 错误：使用 8 位地址（0xA0）读写
-✅ 正确：使用 7 位地址（0x50），HAL 自动处理读写位
+❌ 错误：直接使用 7 位地址（0x50）传给 HAL 函数
+✅ 正确：HAL 需要左移一位的地址（`0x50 << 1` = 0xA0），HAL 内部再添加读写位
 
 ### 2. GPIO 中断去抖
 ❌ 错误：在中断中加 `HAL_Delay(50)`

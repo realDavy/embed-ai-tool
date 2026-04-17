@@ -52,14 +52,14 @@ MX_USART1_UART_Init();  // 确保 UART 初始化被调用
 **检查清单：**
 - [ ] **NVIC 未启用**：在 CubeMX 中检查 NVIC Settings
 - [ ] **中断优先级**：优先级配置是否合理
-- [ ] **中断函数名错误**：必须是 `HAL_<peripheral>IRQHandler`
+- [ ] **中断函数名错误**：IRQ Handler 名称必须与启动文件一致（如 `USART1_IRQHandler`），注意不要与 HAL 回调（如 `HAL_UART_RxCpltCallback`）混淆
 - [ ] **IT 函数未调用**：需要先调用 `HAL_..._Start_IT`
 
 **常见错误：**
 ```c
-// ❌ 错误：中断函数名拼写错误
-void USART1_IRQHandler(void) {
-  // 错误！应该是 USART1_IRQHandler（STM32F1xx）
+// ❌ 错误：中断函数名拼写错误（必须与 startup_stm32*.s 中一致）
+void Usart1_IRQHandler(void) {  // 错误！大小写不对，应为 USART1_IRQHandler
+    HAL_UART_IRQHandler(&huart1);
 }
 
 // ❌ 错误：忘记调用 IT 启动函数
@@ -119,7 +119,7 @@ void start_dma_correct(void) {
 - [ ] **栈溢出**：增加栈大小（在 .ioc 文件中配置）
 - [ ] **数组越界**：检查所有数组访问
 - [ ] **空指针**：检查指针是否为 NULL
-- [ ] **中断中浮点运算**：Cortex-M3 浮点慢且可能栈溢出
+- [ ] **中断中浮点运算**：Cortex-M3 无硬件 FPU，浮点由软件库实现，速度慢且消耗大量栈空间
 - [ ] **大栈数组**：ISR 中不应有大数组
 
 **调试方法：**
@@ -156,23 +156,20 @@ void HardFault_Handler(void)
 volatile uint32_t counter = 0;
 
 void EXTI0_IRQHandler(void) {
-    counter++;  // 非原子操作！
+    counter++;  // ISR 中对 counter 的单次自增在 Cortex-M3 上不是原子的（读-改-写）
 }
 
-// ✅ 正确：中断保护
+// ✅ 正确：在主循环侧保护共享变量
 volatile uint32_t counter = 0;
 
 void EXTI0_IRQHandler(void) {
+    counter++;  // ISR 中无需 disable_irq，因为同优先级中断不会嵌套
+}
+
+void main_loop(void) {
     __disable_irq();
-    counter++;
+    uint32_t local = counter;  // 主循环读取时需要保护，防止被 ISR 打断
     __enable_irq();
-}
-
-// ✅ 或使用 HAL 原子操作
-volatile uint32_t counter = 0;
-
-void EXTI0_IRQHandler(void) {
-    ATOMIC_SET_BIT(&counter, 0);
 }
 ```
 

@@ -52,7 +52,6 @@ python3 scripts/em_config.py path
 
 | 技能 | 说明 |
 |------|------|
-| `project-intake` | 识别工程形态、目标芯片、调试探针线索及构建产物 |
 | `build-cmake` | 配置并构建基于 CMake 的 MCU 固件工程 |
 | `build-keil` | 配置并构建基于 Keil MDK 的固件工程 |
 | `build-iar` | 配置并构建基于 IAR EWARM 的固件工程 |
@@ -68,7 +67,6 @@ python3 scripts/em_config.py path
 ```text
 .
 ├── skills/                     # 技能模块
-│   ├── project-intake/         # 工程识别
 │   ├── build-cmake/            # CMake 构建
 │   ├── build-keil/             # Keil 构建
 │   ├── build-iar/              # IAR 构建

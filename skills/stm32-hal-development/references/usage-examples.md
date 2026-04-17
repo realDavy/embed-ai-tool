@@ -29,7 +29,8 @@
 
 **bsp_led.h**:
 ```c
-#pragma once
+#ifndef BSP_LED_H
+#define BSP_LED_H
 
 #include "main.h"
 
@@ -37,6 +38,8 @@ void BSP_LED_Init(void);
 void BSP_LED_Toggle(void);
 void BSP_LED_On(void);
 void BSP_LED_Off(void);
+
+#endif /* BSP_LED_H */
 ```
 
 **bsp_led.c**:
@@ -104,7 +107,8 @@ mkdir -p Hardware/bsp_uart
 
 创建 `bsp_uart.h`：
 ```c
-#pragma once
+#ifndef BSP_UART_H
+#define BSP_UART_H
 
 #include "main.h"
 #include <stdint.h>
@@ -112,6 +116,8 @@ mkdir -p Hardware/bsp_uart
 void BSP_UART_Init(void);
 void BSP_UART_ReceiveIT(void);
 uint16_t BSP_UART_GetData(uint8_t* data, uint16_t len);
+
+#endif /* BSP_UART_H */
 ```
 
 ### 步骤 3：实现 BSP 驱动
@@ -134,12 +140,10 @@ void BSP_UART_ReceiveIT(void) {
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART1) {
-        __disable_irq();
         rxIndex++;
         if (rxIndex >= RX_BUFFER_SIZE) {
             rxIndex = 0;
         }
-        __enable_irq();
 
         // 重启接收
         HAL_UART_Receive_IT(&huart1, &rxBuffer[rxIndex], 1);
@@ -213,7 +217,8 @@ BSP_UART_ReceiveIT();
 
 `bsp_pwm.h`：
 ```c
-#pragma once
+#ifndef BSP_PWM_H
+#define BSP_PWM_H
 
 #include "main.h"
 
@@ -221,6 +226,8 @@ void BSP_PWM_Init(void);
 void BSP_PWM_SetDutyCycle(uint16_t duty);
 void BSP_PWM_Start(void);
 void BSP_PWM_Stop(void);
+
+#endif /* BSP_PWM_H */
 ```
 
 `bsp_pwm.c`：
@@ -298,7 +305,8 @@ BSP_PWM_Start();
 
 `bsp_sensor.h`：
 ```c
-#pragma once
+#ifndef BSP_SENSOR_H
+#define BSP_SENSOR_H
 
 #include "main.h"
 #include <stdint.h>
@@ -308,6 +316,8 @@ BSP_PWM_Start();
 
 void BSP_Sensor_Init(void);
 HAL_StatusTypeDef BSP_Sensor_Read(uint8_t reg, uint8_t* data);
+
+#endif /* BSP_SENSOR_H */
 ```
 
 `bsp_sensor.c`：
@@ -387,7 +397,8 @@ BSP_Sensor_Init();
 
 `bsp_adc.h`：
 ```c
-#pragma once
+#ifndef BSP_ADC_H
+#define BSP_ADC_H
 
 #include "main.h"
 #include <stdint.h>
@@ -397,6 +408,8 @@ BSP_Sensor_Init();
 void BSP_ADC_Init(void);
 void BSP_ADC_Start(void);
 uint32_t BSP_ADC_GetAverage(void);
+
+#endif /* BSP_ADC_H */
 ```
 
 `bsp_adc.c`：

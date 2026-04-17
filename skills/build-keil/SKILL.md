@@ -82,4 +82,3 @@ description: 当需要通过 Keil MDK 命令行编译嵌入式工程，调用自
 
 - 当下一步意图是给硬件烧录程序时，将成功构建结果交给 `flash-keil`（使用 Keil 内置调试器）或 `flash-openocd`（使用 OpenOCD）。
 - 当下一步需要符号信息或调试会话时，将成功构建结果交给 `debug-gdb-openocd`。
-- 只有当构建过程暴露出互相矛盾的工程元数据时，才将部分结果回交给 `project-intake`。

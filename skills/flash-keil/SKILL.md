@@ -73,4 +73,3 @@ description: 当需要通过 Keil MDK 内置调试器烧录固件到目标板时
 
 - 从 `build-keil` 接收编译成功的工程信息。
 - 烧录成功后交给 `serial-monitor`（查看串口输出）或 `debug-gdb-openocd`（在线调试）。
-- 烧录失败且疑似工程配置问题时，回交给 `project-intake`。

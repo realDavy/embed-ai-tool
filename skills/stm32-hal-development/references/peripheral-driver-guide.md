@@ -189,8 +189,8 @@ BSP_<Module>_<Action>()   // 例: BSP_GXHT3L_Init()
  ******************************************************************************
  */
 
-#ifndef __BSP_XXX_H
-#define __BSP_XXX_H
+#ifndef BSP_XXX_H
+#define BSP_XXX_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -220,15 +220,11 @@ typedef struct {
 int8_t BSP_XXX_Init(void);
 int8_t BSP_XXX_ReadData(XXX_Data_t *data);
 
-/* Private functions ---------------------------------------------------------*/
-
-uint8_t XXX_CalcCRC(const uint8_t *data, uint8_t len);
-
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __BSP_XXX_H */
+#endif /* BSP_XXX_H */
 ```
 
 ---

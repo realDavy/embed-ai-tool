@@ -138,9 +138,12 @@ shared_var++;
 __enable_irq();
 ```
 
-3. **使用 HAL 的原子操作**
+3. **使用原子操作保护共享变量**
 ```c
-ATOMIC_SET_BIT(&flag, 0);
+// 在主循环中读取被 ISR 修改的变量
+__disable_irq();
+uint32_t local = shared_var;
+__enable_irq();
 ```
 
 4. **避免在 ISR 中使用阻塞函数**
