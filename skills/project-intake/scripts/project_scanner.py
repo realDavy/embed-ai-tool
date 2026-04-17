@@ -79,6 +79,21 @@ def detect_build_system(workspace: Path) -> tuple[str | None, list[Evidence]]:
             evidence.append(Evidence("build_system", "cmake", "CMakePresets.json"))
         return "cmake", evidence
 
+    if (workspace / "platformio.ini").exists():
+        evidence.append(Evidence("build_system", "platformio", "platformio.ini"))
+        return "platformio", evidence
+
+    # IAR: 搜索 .ewp / .eww 文件（仅顶层和一级子目录）
+    for ewp in workspace.glob("*.ewp"):
+        evidence.append(Evidence("build_system", "iar", str(ewp.relative_to(workspace))))
+        return "iar", evidence
+    for ewp in workspace.glob("*/*.ewp"):
+        evidence.append(Evidence("build_system", "iar", str(ewp.relative_to(workspace))))
+        return "iar", evidence
+    for eww in workspace.glob("*.eww"):
+        evidence.append(Evidence("build_system", "iar", str(eww.relative_to(workspace))))
+        return "iar", evidence
+
     for name in ["Makefile", "makefile", "GNUmakefile"]:
         if (workspace / name).exists():
             evidence.append(Evidence("build_system", "make", name))
@@ -369,13 +384,25 @@ def build_profile(
 
 def suggest_next_skill(profile: ProjectProfile) -> str:
     if profile.build_system and not profile.artifact_path:
-        return "build-cmake"
+        skill_map = {
+            "cmake": "build-cmake",
+            "keil": "build-keil",
+            "iar": "build-iar",
+            "platformio": "build-platformio",
+        }
+        return skill_map.get(profile.build_system, "build-cmake")
     if profile.artifact_path and profile.probe:
         return "flash-openocd"
     if profile.serial_port:
         return "serial-monitor"
     if profile.build_system:
-        return "build-cmake"
+        skill_map = {
+            "cmake": "build-cmake",
+            "keil": "build-keil",
+            "iar": "build-iar",
+            "platformio": "build-platformio",
+        }
+        return skill_map.get(profile.build_system, "build-cmake")
     return "project-intake (需要更多信息)"
 
 
