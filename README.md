@@ -9,7 +9,7 @@
 在任意支持 skill 的大模型对话中输入：
 
 ```
-帮我安装 https://github.com/LeoKemp223/embed-ai-tool.git 的 skill
+帮我安装 https://github.com/relaDavy/embed-ai-tool.git 的 skill
 ```
 
 大模型会自动克隆仓库、复制 skill 到你的工程目录并完成配置。
